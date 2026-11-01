@@ -1,0 +1,20 @@
+# Data
+numpy>=2.0
+pandas>=2.2
+pydicom>=3.0
+scipy
+
+# Models
+scikit-learn
+lightgbm
+torch
+torchvision
+
+# Notebooks and plots
+matplotlib
+jupyter
+tqdm
+
+# Kaggle API (six is a missing dependency of kaggle 2.2.5)
+kaggle
+six

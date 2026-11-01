@@ -1,0 +1,23 @@
+# Data (downloaded from Kaggle, too large for git)
+data/
+*.dcm
+*.npy
+*.zip
+
+# Kaggle credentials
+kaggle.json
+access_token
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Model weights
+*.pt
+*.pth
+
+# OS
+.DS_Store
+Thumbs.db
