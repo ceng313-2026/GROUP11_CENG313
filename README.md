@@ -98,9 +98,17 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+On Windows, `pip install -r requirements.txt` installs the CPU-only build of PyTorch. To train on an NVIDIA GPU, reinstall it with CUDA support:
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+```
+
 ### 2. Kaggle API token
 
-Accept the competition rules on Kaggle first. Then create a token in Kaggle → Settings → API and save it to `~/.kaggle/access_token` (or `~/.kaggle/kaggle.json` for the older file format). Never commit it.
+Accept the competition rules on Kaggle first. Then create a token in Kaggle → Settings → API and save it to `~/.kaggle/access_token` (or `~/.kaggle/kaggle.json` for the older file format). Never commit it. Alternatively, run `kaggle auth login` to sign in through the browser.
+
+Use the Kaggle API only from the command line. `import kaggle` in Python authenticates on import and raises an error when no token is found, so don't import it in notebooks or in `src/`.
 
 ### 3. Data
 

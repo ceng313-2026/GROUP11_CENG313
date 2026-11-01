@@ -26,7 +26,9 @@ Project plan for the CENG313 Introduction to Data Science term project, based on
 
 ## Ownership
 
-Each part has one owner who is responsible for finishing it. Both of us review each other's pull requests, so we both understand the whole project.
+Each part has one owner who is responsible for finishing it. Both of us read each other's code, so we both understand the whole project.
+
+The owners below are a guide, not a strict rule. Either of us can pick up or help with the other's tasks when needed. We only tell each other first, so we don't do the same work twice.
 
 | Area | Owner |
 | --- | --- |
@@ -116,8 +118,8 @@ We start with Option A. If time allows, we move to Option B.
 
 ## Working rules
 
-- Each person works on their own branch and merges through a pull request.
-- The other person reviews the pull request before it is merged.
+- Each person works on their own branch (`taha`, `ahmetcan`) and merges it into `main` when a piece of work is done. We don't use pull requests.
+- After merging, we tell each other what changed, and pull `main` into our own branch.
 - One commit per piece of work, with a clear message (e.g. `Add DICOM loader`, `Add EDA label analysis`). No large last-day uploads.
 - Every experiment result goes into the README progress log.
 - Baselines are written by us, not copied from public Kaggle notebooks.
