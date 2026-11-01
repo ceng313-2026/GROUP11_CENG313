@@ -54,10 +54,10 @@ These three things affect both of us. We agree on them in the first week, and no
 ## Phase 1 — EDA + Baseline (Assignment 1)
 
 ### Step 0 — Setup
-- [ ] Accept competition rules on Kaggle, check total dataset size
-- [ ] Check whether late submissions are open
-- [ ] Download a small subset first and test the pipeline on it
-- [ ] Create repo structure (`src/`, `notebooks/`) and README skeleton
+- [x] Accept competition rules on Kaggle, check total dataset size
+- [x] Check whether late submissions are open
+- [x] Download a small subset first and test the pipeline on it
+- [x] Create repo structure (`src/`, `notebooks/`) and README skeleton
 
 ### Step 1 — Exploratory Data Analysis
 - [ ] **Labels:** number of positive series, count per location, series with multiple locations
