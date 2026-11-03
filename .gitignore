@@ -18,6 +18,9 @@ __pycache__/
 *.pt
 *.pth
 
+# Personal notes
+CALISMA_NOTLARIM.md
+
 # OS
 .DS_Store
 Thumbs.db
