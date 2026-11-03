@@ -88,7 +88,7 @@ GROUP11_CENG313/
 
 ## How to Run
 
-> TODO: preprocessing command, training command, how to run each notebook.
+> TODO: training command, how to run each notebook.
 
 ### 1. Environment
 
@@ -141,12 +141,32 @@ data/raw/
 └── series/<SeriesInstanceUID>/*.dcm
 ```
 
+### 4. Preprocessing
+
+`src/data.py` turns every series into one uint8 volume of 160 × 192 × 192 voxels (1 mm), cut from the top of the head:
+
+```bash
+python -m src.data --root data/raw --out data/processed
+```
+
+For all 4,348 series, run the same command in a Kaggle Notebook with `--root` set to the competition folder and `--out /kaggle/working/processed` (about 8 GB). Use `--limit 20` for a test run. Use `--shard 0/2` and `--shard 1/2` to split the work over two sessions. Series that are already saved are skipped, so a stopped run can be started again.
+
+Output:
+
+```
+data/processed/
+├── volumes/<SeriesInstanceUID>.npz   # read with src.data.load_volume()
+├── volumes_meta.csv                  # source spacing, crop box, errors
+└── localizers_vox.csv                # localizer points in volume coordinates (z, y, x)
+```
+
 ## Progress Log
 
 | Date | Who | What |
 | --- | --- | --- |
 | 2026-10-29 | Both | Selected competition, made project plan |
 | 2026-11-01 | Can | Setup: accepted rules, checked dataset (311 GB, 4,348 series), confirmed late submissions are open, tested DICOM reading on a 24-series subset, added repo skeleton |
+| 2026-11-04 | Can | Preprocessing (`src/data.py`): DICOM loader for single- and multi-frame series, same orientation for all scans, head crop, 1 mm resampling, CT/MR normalization, localizers in volume coordinates. Tested on the 24-series subset. Found that many CT headers have a wrong `RescaleIntercept` (pixels are already in HU) and that the localizer frame `f` starts at 0 |
 
 ## Kaggle Submission History
 

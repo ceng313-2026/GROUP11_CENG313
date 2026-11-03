@@ -70,10 +70,14 @@ These three things affect both of us. We agree on them in the first week, and no
 - [ ] **Leakage check:** do some patients have more than one series?
 
 ### Step 2 — Preprocessing (`src/data.py`)
-- [ ] Read a DICOM series, sort slices, build a 3D volume
-- [ ] Resize all volumes to a fixed shape
-- [ ] Normalize intensity (windowing for CT, percentile scaling for MR)
-- [ ] Cache volumes as `.npy` files
+- [x] Read a DICOM series (one file per slice or multi-frame), sort slices by position, build a 3D volume
+- [x] Turn every volume to the same orientation (top → bottom, front → back, right → left)
+- [x] Crop a fixed box from the top of the head and resample to 1 mm voxels (fixed shape 160 × 192 × 192)
+- [x] Normalize intensity (windowing for CT, percentile scaling for MR)
+- [x] Convert localizer points to volume coordinates
+- [x] Test on the 24-series subset
+- [ ] Agree on the data format together (shared contract 1)
+- [ ] Cache all 4,348 series on Kaggle and share them as a Kaggle dataset
 
 ### Step 3 — Baselines
 All baselines use the same 5-fold CV and the competition metric.
