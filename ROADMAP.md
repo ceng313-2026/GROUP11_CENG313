@@ -62,12 +62,12 @@ These three things affect both of us. We agree on them in the first week, and no
 - [x] Create repo structure (`src/`, `notebooks/`) and README skeleton
 
 ### Step 1 — Exploratory Data Analysis
-- [ ] **Labels:** number of positive series, count per location, series with multiple locations
-- [ ] **Modality:** CTA / MRA / MRI counts, positive rate per modality
-- [ ] **Demographics:** age and sex vs. aneurysm presence
-- [ ] **DICOM metadata:** number of slices, slice thickness, pixel spacing, image size
+- [x] **Labels:** number of positive series, count per location, series with multiple locations
+- [x] **Modality:** CTA / MRA / MRI counts, positive rate per modality
+- [x] **Demographics:** age and sex vs. aneurysm presence
+- [x] **DICOM metadata:** number of slices, slice thickness, pixel spacing, image size
 - [ ] **Visuals:** sample slices per modality, localizer points drawn on images
-- [ ] **Leakage check:** do some patients have more than one series?
+- [x] **Leakage check:** do some patients have more than one series? (No: every series has its own PatientID)
 
 ### Step 2 — Preprocessing (`src/data.py`)
 - [x] Read a DICOM series (one file per slice or multi-frame), sort slices by position, build a 3D volume
@@ -88,10 +88,10 @@ All baselines use the same 5-fold CV and the competition metric.
 | B1 | Logistic regression / LightGBM | Age, sex, modality |
 | B2 | Pretrained 2D CNN (e.g. ResNet18), 14 outputs | Maximum intensity projections (MIP) from 3 views |
 
-- [ ] Implement the competition metric
-- [ ] Create and save CV folds
-- [ ] B0
-- [ ] B1
+- [x] Implement the competition metric
+- [x] Create and save CV folds
+- [x] B0
+- [x] B1
 - [ ] B2
 
 ### Step 4 — Write-up
