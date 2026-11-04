@@ -18,10 +18,6 @@ EPOCHS = 1  # 15 for the real run
 
 OUT = "/kaggle/working"
 CODE = "/tmp/code"
-TRAIN_CANDIDATES = [
-    "/kaggle/input/competitions/rsna-intracranial-aneurysm-detection/train.csv",
-    "/kaggle/input/rsna-intracranial-aneurysm-detection/train.csv",
-]
 
 
 def find_one(patterns):
@@ -30,6 +26,18 @@ def find_one(patterns):
         if hits:
             return hits[0]
     raise FileNotFoundError(f"nothing matches {patterns}, is the dataset added as input?")
+
+
+def find_competition():
+    """Folder of the competition data. Kaggle has used several layouts, so look for train_localizers.csv
+    next to a series/ folder instead of trusting one path."""
+    for pattern in ["/kaggle/input/*/train_localizers.csv", "/kaggle/input/*/*/train_localizers.csv",
+                    "/kaggle/input/*/*/*/train_localizers.csv"]:
+        for hit in sorted(glob.glob(pattern)):
+            if os.path.isdir(os.path.join(os.path.dirname(hit), "series")):
+                return os.path.dirname(hit)
+    print("Inputs found:", *sorted(glob.glob("/kaggle/input/*/*")), sep="\n  ")
+    raise FileNotFoundError("competition data not found: Add Input -> Competitions -> RSNA Intracranial Aneurysm Detection")
 
 
 def scratch_dir(name):
@@ -65,7 +73,7 @@ def run(cmd):
 
 
 setup_code()
-train_csv = next(p for p in TRAIN_CANDIDATES if os.path.exists(p))
+train_csv = f"{find_competition()}/train.csv"
 volumes = os.path.dirname(find_one(["/kaggle/input/*/volumes_meta.csv", "/kaggle/input/datasets/*/*/volumes_meta.csv"]))
 print(f"Volumes from {volumes}")
 

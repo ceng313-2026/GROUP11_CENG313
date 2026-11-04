@@ -78,9 +78,13 @@ GROUP11_CENG313/
 │   ├── assignment1_eda_baseline.ipynb
 │   └── assignment2_solution.ipynb
 ├── src/
-│   ├── data.py       # DICOM loading, preprocessing, datasets
+│   ├── data.py       # DICOM loading, preprocessing, MIPs
 │   ├── models.py     # model definitions
+│   ├── train_b2.py   # baseline B2 training with 5-fold CV
 │   └── utils.py      # competition metric, CV split, helpers
+├── kaggle/           # scripts that run on Kaggle (one notebook cell each) and the code upload
+├── splits/           # folds.csv, the shared CV split
+├── results/          # out-of-fold predictions of every model
 ├── data/             # not tracked by git
 ├── requirements.txt
 ├── ROADMAP.md
@@ -150,7 +154,21 @@ data/raw/
 python -m src.data --root data/raw --out data/processed
 ```
 
-For all 4,348 series, run the same command in a Kaggle Notebook with `--root` set to the competition folder and `--out /kaggle/working/processed` (about 8 GB). Use `--limit 20` for a test run. Use `--shard 0/2` and `--shard 1/2` to split the work over two sessions. Series that are already saved are skipped, so a stopped run can be started again.
+Use `--limit 20` for a test run. Use `--shard 0/2` and `--shard 1/2` to split the work over two sessions. Series that are already saved are skipped, so a stopped run can be started again.
+
+For all 4,348 series we run it on Kaggle (CPU, no accelerator):
+
+1. The GitHub repo is private, so a Kaggle Notebook can't clone it. Upload our code as a private Kaggle dataset instead: `python kaggle/push_code.py --user <kaggle username> --new` the first time, `python kaggle/push_code.py --user <kaggle username> -m "<note>"` after every change.
+2. New Notebook with the competition data and `group11-code` as inputs. Paste `kaggle/preprocess_notebook.py` into one cell, test with `LIMIT = 20`, then set `LIMIT = None` and use Save Version → Save & Run All.
+3. Make a dataset (`group11-volumes`) from the notebook's output.
+
+Kaggle saves only about 500 output files per notebook, so on Kaggle the volumes are packed into 8 zip files (`volumes_0.zip` … `volumes_7.zip`, about 8 GB). `src.data.volume_paths()` finds the volumes in both layouts and unzips them if needed:
+
+```python
+from src.data import volume_paths, load_volume
+paths = volume_paths("/kaggle/input/group11-volumes", extract_to="/kaggle/temp/volumes")  # {SeriesInstanceUID: path}
+volume = load_volume(paths[uid])  # uint8, (160, 192, 192)
+```
 
 Output:
 
@@ -171,6 +189,14 @@ python -m src.utils make-folds
 
 In code, use `src.utils.load_folds()` for the split and `src.utils.competition_score()` for the metric.
 
+### 6. Baseline B2
+
+`src/train_b2.py` trains one ResNet18 per fold (ImageNet weights) on maximum intensity projections from 3 views (`src.data.make_mips`). On CT, bone (above about 590 HU) is removed before the projection, otherwise the skull hides the vessels. It uses `src.utils.run_cv`, so folds and scoring are the same as for B0 and B1.
+
+It needs a GPU, so it runs on Kaggle: a notebook with the competition data, `group11-code` and `group11-volumes` as inputs, GPU on and Internet on. Paste `kaggle/train_b2_notebook.py` into one cell. It writes `oof_b2.csv` and `b2_log.csv` (loss and validation score per epoch) to the output; copy them to `results/`.
+
+Every fold is trained for a fixed 15 epochs and the last model is used. We don't pick the best epoch on the validation fold, because that would make the CV score too optimistic.
+
 ## Progress Log
 
 | Date | Who | What |
@@ -183,6 +209,7 @@ In code, use `src.utils.load_folds()` for the split and `src.utils.competition_s
 | 2026-11-04 | Taha | Shared CV code (`run_cv`, `cv_report`, `save_oof` in `src/utils.py`) and baseline B0 (`notebooks/03_baselines.ipynb`): 0.500 on every fold, as expected |
 | 2026-11-04 | Taha | Baseline B1 on age, sex and modality only: logistic regression with a spline for age (0.659) and LightGBM (0.666). An image model has to clearly beat about 0.66 |
 | 2026-11-04 | Can | Preprocessing (`src/data.py`): DICOM loader for single- and multi-frame series, same orientation for all scans, head crop, 1 mm resampling, CT/MR normalization, localizers in volume coordinates. Tested on the 24-series subset. Found that many CT headers have a wrong `RescaleIntercept` (pixels are already in HU) and that the localizer frame `f` starts at 0 |
+| 2026-11-04 | Can | Data format agreed with Taha. B2 code (`src/train_b2.py`, `MIPNet` in `src/models.py`): ResNet18 on 3-view MIPs with bone removed on CT, left-right flip with swapped labels, flip TTA. Tested end to end on the subset (CPU). Kaggle scripts: code upload, full preprocessing (volumes packed into 8 zips because of Kaggle's output file limit), B2 training. Full preprocessing run started on Kaggle |
 
 ## Kaggle Submission History
 
