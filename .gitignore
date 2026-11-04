@@ -3,6 +3,7 @@ data/
 *.dcm
 *.npy
 *.zip
+build/
 
 # Kaggle credentials
 kaggle.json

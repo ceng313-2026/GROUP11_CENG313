@@ -10,19 +10,27 @@ Every series becomes one uint8 volume of shape VOLUME_SHAPE with VOXEL_MM voxels
 4. Resample the box to 1 mm voxels
 5. Scale intensities to 0-255: a fixed HU window for CT, percentiles of the head for MR
 
-The full data is 311 GB, so the cache is made on Kaggle:
-    python -m src.data --root /kaggle/input/rsna-intracranial-aneurysm-detection --out /kaggle/working/processed
+The full data is 311 GB, so the cache is made on Kaggle (see kaggle/preprocess_notebook.py):
+    python -m src.data --root /kaggle/input/competitions/rsna-intracranial-aneurysm-detection --out /kaggle/working/processed
 
 Output:
     <out>/volumes/<SeriesInstanceUID>.npz   uint8 volume, read it with load_volume()
     <out>/volumes_meta.csv                  one row per series: source spacing, crop box, errors
     <out>/localizers_vox.csv                localizer points in volume coordinates (z, y, x)
+
+Kaggle saves only about 500 files per notebook, so on Kaggle the volumes are written to /kaggle/temp
+and pack_volumes() puts them into a few zip files in /kaggle/working. volume_paths() finds the volumes
+again, packed or not.
+
+make_mips() turns a cached volume into the three 2D views used by baseline B2.
 """
 import argparse
 import ast
 import itertools
 import os
+import shutil
 import time
+import zipfile
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -39,6 +47,10 @@ VOLUME_SHAPE = (160, 192, 192)  # (z, y, x) voxels = 160 x 192 x 192 mm
 CT_WINDOW = (-100, 700)  # HU mapped to 0 and 255
 MR_PERCENTILES = (0.5, 99.9)  # of the head voxels, mapped to 0 and 255
 MIN_HEAD_AREA_MM2 = 1000  # slices with less tissue than this are above the head
+
+# MIPs for B2: on CT the skull is brighter than the vessels, so bone is removed before the projection
+BONE_LEVEL = 220  # uint8 value on CT, about 590 HU with CT_WINDOW (contrast in vessels is 200-500 HU)
+BONE_MARGIN = 3  # voxels removed around bone, its edges are blurred to vessel brightness
 
 # Directions of the volume axes in DICOM patient coordinates (x: right -> left, y: front -> back, z: feet -> head)
 CANONICAL_DIRS = np.array([[0, 0, -1], [0, 1, 0], [1, 0, 0]], float)
@@ -287,6 +299,69 @@ def load_volume(path):
         return f["volume"]
 
 
+def pack_volumes(processed_dir, out_dir, n_archives=8):
+    """Put volumes/*.npz into n_archives zip files volumes_<i>.zip in out_dir and copy the CSVs next to them.
+
+    No compression: the .npz files are already compressed. Each archive keeps the volumes/ folder inside.
+    """
+    processed_dir, out_dir = Path(processed_dir), Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    files = sorted(p for p in (processed_dir / "volumes").glob("*.npz") if not p.name.endswith(".tmp.npz"))
+    for i in range(n_archives):
+        with zipfile.ZipFile(out_dir / f"volumes_{i}.zip", "w", zipfile.ZIP_STORED) as z:
+            for f in files[i::n_archives]:
+                z.write(f, f"volumes/{f.name}")
+    for name in ["volumes_meta.csv", "localizers_vox.csv"]:
+        if (processed_dir / name).exists():
+            shutil.copy(processed_dir / name, out_dir / name)
+    print(f"Packed {len(files)} volumes into {n_archives} archives in {out_dir}")
+
+
+def volume_paths(folder, extract_to=None):
+    """{SeriesInstanceUID: path of its .npz} for every cached volume under folder (at any depth).
+
+    Works for data/processed, and for the Kaggle dataset made from pack_volumes() whether Kaggle has
+    unzipped the archives or not. Zip files are extracted to extract_to (default: folder) when needed.
+    """
+    folder = Path(folder)
+    paths = {p.stem: p for p in folder.rglob("*.npz") if not p.name.endswith(".tmp.npz")}
+    archives = sorted(folder.rglob("volumes_*.zip"))
+    if not paths and archives:
+        extract_to = Path(extract_to or folder)
+        for archive in archives:
+            print(f"Extracting {archive.name} to {extract_to}")
+            with zipfile.ZipFile(archive) as z:
+                z.extractall(extract_to)
+        paths = {p.stem: p for p in extract_to.rglob("*.npz")}
+    return paths
+
+
+def make_mips(volume, is_ct):
+    """Three 2D views of a cached volume, for baseline B2.
+
+    Returns (axial, coronal, sagittal) uint8 arrays of shape (3, 192, 192), (3, 160, 192), (3, 160, 192),
+    looking from the top, the front and the side. The 3 channels of each view are:
+    0. MIP: maximum along the viewing direction (vessels are the brightest thing on CTA and MRA)
+    1. MIP of the middle half only: less overlap, gives a bit of depth
+    2. mean along the viewing direction: the anatomy around the vessels
+    On CT, bone (>= BONE_LEVEL) and BONE_MARGIN voxels around it are set to 0 first. Otherwise the
+    skull fills the whole MIP.
+    """
+    if is_ct:
+        bone = ndimage.binary_dilation(volume >= BONE_LEVEL, iterations=BONE_MARGIN)
+        volume = np.where(bone, 0, volume).astype(np.uint8)
+    views = []
+    for axis in range(3):
+        n = volume.shape[axis]
+        middle = np.take(volume, np.arange(n // 4, n - n // 4), axis=axis)
+        views.append(np.stack([
+            volume.max(axis=axis),
+            middle.max(axis=axis),
+            np.round(volume.mean(axis=axis, dtype=np.float32)).astype(np.uint8),
+        ]))
+    return tuple(views)
+
+
 def _process(args):
     """Worker: preprocess one series and save it. Errors are returned, not raised."""
     series_dir, localizers, out_dir = args
@@ -294,7 +369,12 @@ def _process(args):
     start = time.time()
     try:
         volume, meta, points = preprocess_series(series_dir, localizers)
-        np.savez_compressed(Path(out_dir) / "volumes" / f"{uid}.npz", volume=volume)
+        # Write to a temporary name first: if the session stops mid-write, no broken .npz is left
+        # behind (a resumed run skips every series that already has an .npz)
+        path = Path(out_dir) / "volumes" / f"{uid}.npz"
+        tmp = path.with_suffix(".tmp.npz")
+        np.savez_compressed(tmp, volume=volume)
+        os.replace(tmp, path)
     except Exception as e:  # one broken series should not stop the whole run
         meta, points = {"error": f"{type(e).__name__}: {e}"}, []
     meta = {ID_COL: uid, **meta, "seconds": round(time.time() - start, 1)}
@@ -325,7 +405,7 @@ def main():
     uids = sorted(p.name for p in (root / "series").iterdir() if p.is_dir())
     shard, n_shards = map(int, args.shard.split("/"))
     uids = uids[shard::n_shards][:args.limit]
-    done = {p.stem for p in (out / "volumes").glob("*.npz")}
+    done = {p.stem for p in (out / "volumes").glob("*.npz") if not p.name.endswith(".tmp.npz")}
     todo = [uid for uid in uids if uid not in done]
     print(f"{len(uids)} series in this shard, {len(uids) - len(todo)} already done, {len(todo)} to go")
 
@@ -342,7 +422,7 @@ def main():
             if i % 50 == 0 or i == len(jobs):
                 elapsed = time.time() - start
                 print(f"{i}/{len(jobs)} series, {elapsed / 60:.1f} min, ~{elapsed / i * (len(jobs) - i) / 60:.0f} min left")
-            if i % 500 == 0:  # save progress in case the session stops
+            if i % 200 == 0:  # save progress in case the session stops
                 _append_csv(metas, out / "volumes_meta.csv")
                 _append_csv(points, out / "localizers_vox.csv")
 
