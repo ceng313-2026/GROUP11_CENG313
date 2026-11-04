@@ -15,6 +15,7 @@ from sklearn.model_selection import StratifiedKFold
 
 ID_COL = "SeriesInstanceUID"
 FOLDS_PATH = Path(__file__).resolve().parent.parent / "splits" / "folds.csv"
+RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 
 LOCATION_COLS = [
     "Left Infraclinoid Internal Carotid Artery",
@@ -109,6 +110,59 @@ def make_folds(train, n_splits=5, seed=42):
 def load_folds(path=FOLDS_PATH):
     """The shared CV split: one row per series with its fold number (0-4)."""
     return pd.read_csv(path)
+
+
+def run_cv(train, fit_predict, folds=None):
+    """Out-of-fold (OOF) predictions: every series is predicted by the model trained without its fold.
+
+    fit_predict(train_part, valid_part) trains a model on train_part and returns probabilities for
+    the rows of valid_part, as an array or DataFrame of shape (len(valid_part), 14) in LABEL_COLS order.
+    Returns one row per series of train: SeriesInstanceUID, fold and the 14 predicted probabilities.
+    """
+    folds = load_folds() if folds is None else folds
+    data = train.merge(folds, on=ID_COL, how="left", validate="one_to_one")
+    if data["fold"].isna().any():
+        raise ValueError("some series have no fold")
+
+    preds = np.full((len(data), len(LABEL_COLS)), np.nan)
+    for fold in sorted(data["fold"].unique()):
+        is_valid = (data["fold"] == fold).to_numpy()
+        pred = fit_predict(data[~is_valid].reset_index(drop=True), data[is_valid].reset_index(drop=True))
+        preds[is_valid] = np.asarray(pred, dtype=float)
+    return pd.concat([data[[ID_COL, "fold"]], pd.DataFrame(preds, columns=LABEL_COLS)], axis=1)
+
+
+def cv_report(train, oof):
+    """Scores of OOF predictions.
+
+    Every number is computed on each fold on its own (like a separate test set) and then averaged
+    over the folds. Scoring all OOF predictions together can be misleading, because the 5 models
+    differ slightly (for B0 it gives 0.49 instead of 0.5).
+    Returns a dict: summary (Series), per_fold (Series), per_modality (Series), per_label (Series of AUCs).
+    """
+    fold = train[ID_COL].map(oof.set_index(ID_COL)["fold"])
+    folds = sorted(fold.unique())
+    per_fold = pd.Series({f: competition_score(train[fold == f], oof) for f in folds}, name="score")
+    per_label = pd.concat([label_aucs(train[fold == f], oof) for f in folds], axis=1).mean(axis=1)
+    per_modality = pd.Series({
+        modality: np.mean([competition_score(train[(train["Modality"] == modality) & (fold == f)], oof) for f in folds])
+        for modality in train["Modality"].unique()
+    }, name="score").sort_index()
+    summary = pd.Series({
+        "cv_score": per_fold.mean(),
+        "cv_std": per_fold.std(),
+        "present_auc": per_label[TARGET_COL],
+        "mean_location_auc": per_label[LOCATION_COLS].mean(),
+    })
+    return {"summary": summary, "per_fold": per_fold, "per_modality": per_modality, "per_label": per_label}
+
+
+def save_oof(oof, name, results_dir=RESULTS_DIR):
+    """Save OOF predictions to results/oof_<name>.csv, so all models can be compared later."""
+    results_dir.mkdir(parents=True, exist_ok=True)
+    path = results_dir / f"oof_{name}.csv"
+    oof.round(6).to_csv(path, index=False)
+    return path
 
 
 def _check_metric():
