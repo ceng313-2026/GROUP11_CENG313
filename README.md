@@ -60,11 +60,11 @@ The data is not stored in this repository. Download it from the competition's Da
 
 ## Results
 
-All results use the same 5-fold CV and the competition metric.
+All results use the same 5-fold CV and the competition metric. Each fold is scored on its own and the 5 scores are averaged (`src.utils.cv_report`). Out-of-fold predictions are in `results/oof_<model>.csv`.
 
 | Model | CV score | Aneurysm Present AUC | Mean location AUC | Kaggle score |
 | --- | --- | --- | --- | --- |
-| B0 | | | | |
+| B0 | 0.500 ± 0.000 | 0.500 | 0.500 | — |
 | B1 | | | | |
 | B2 | | | | |
 | Ours | | | | |
@@ -179,6 +179,7 @@ In code, use `src.utils.load_folds()` for the split and `src.utils.competition_s
 | 2026-11-01 | Taha | Competition metric (`src/utils.py`), tested on random and real labels |
 | 2026-11-02 | Taha | Read the DICOM headers of all 4,348 series on Kaggle (`kaggle/extract_dicom_meta.py`, 51 min, no errors). EDA of labels, modality, age, sex and localizers (`notebooks/01_eda_labels.ipynb`) and of the DICOM metadata (`notebooks/02_eda_dicom_meta.ipynb`). Every series has its own PatientID, so no patient overlap |
 | 2026-11-04 | Taha | 5-fold CV split (`splits/folds.csv`), stratified by modality and rarest location |
+| 2026-11-04 | Taha | Shared CV code (`run_cv`, `cv_report`, `save_oof` in `src/utils.py`) and baseline B0 (`notebooks/03_baselines.ipynb`): 0.500 on every fold, as expected |
 | 2026-11-04 | Can | Preprocessing (`src/data.py`): DICOM loader for single- and multi-frame series, same orientation for all scans, head crop, 1 mm resampling, CT/MR normalization, localizers in volume coordinates. Tested on the 24-series subset. Found that many CT headers have a wrong `RescaleIntercept` (pixels are already in HU) and that the localizer frame `f` starts at 0 |
 
 ## Kaggle Submission History

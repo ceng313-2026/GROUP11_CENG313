@@ -90,7 +90,7 @@ All baselines use the same 5-fold CV and the competition metric.
 
 - [x] Implement the competition metric
 - [x] Create and save CV folds
-- [ ] B0
+- [x] B0
 - [ ] B1
 - [ ] B2
 
