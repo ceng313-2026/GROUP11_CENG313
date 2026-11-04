@@ -91,7 +91,7 @@ All baselines use the same 5-fold CV and the competition metric.
 - [x] Implement the competition metric
 - [x] Create and save CV folds
 - [x] B0
-- [ ] B1
+- [x] B1
 - [ ] B2
 
 ### Step 4 — Write-up

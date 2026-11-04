@@ -65,7 +65,8 @@ All results use the same 5-fold CV and the competition metric. Each fold is scor
 | Model | CV score | Aneurysm Present AUC | Mean location AUC | Kaggle score |
 | --- | --- | --- | --- | --- |
 | B0 | 0.500 ± 0.000 | 0.500 | 0.500 | — |
-| B1 | | | | |
+| B1-LR | 0.659 ± 0.007 | 0.675 | 0.644 | — |
+| B1-LGBM | 0.666 ± 0.010 | 0.676 | 0.655 | — |
 | B2 | | | | |
 | Ours | | | | |
 
@@ -180,6 +181,7 @@ In code, use `src.utils.load_folds()` for the split and `src.utils.competition_s
 | 2026-11-02 | Taha | Read the DICOM headers of all 4,348 series on Kaggle (`kaggle/extract_dicom_meta.py`, 51 min, no errors). EDA of labels, modality, age, sex and localizers (`notebooks/01_eda_labels.ipynb`) and of the DICOM metadata (`notebooks/02_eda_dicom_meta.ipynb`). Every series has its own PatientID, so no patient overlap |
 | 2026-11-04 | Taha | 5-fold CV split (`splits/folds.csv`), stratified by modality and rarest location |
 | 2026-11-04 | Taha | Shared CV code (`run_cv`, `cv_report`, `save_oof` in `src/utils.py`) and baseline B0 (`notebooks/03_baselines.ipynb`): 0.500 on every fold, as expected |
+| 2026-11-04 | Taha | Baseline B1 on age, sex and modality only: logistic regression with a spline for age (0.659) and LightGBM (0.666). An image model has to clearly beat about 0.66 |
 | 2026-11-04 | Can | Preprocessing (`src/data.py`): DICOM loader for single- and multi-frame series, same orientation for all scans, head crop, 1 mm resampling, CT/MR normalization, localizers in volume coordinates. Tested on the 24-series subset. Found that many CT headers have a wrong `RescaleIntercept` (pixels are already in HU) and that the localizer frame `f` starts at 0 |
 
 ## Kaggle Submission History
