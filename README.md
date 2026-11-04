@@ -160,12 +160,25 @@ data/processed/
 └── localizers_vox.csv                # localizer points in volume coordinates (z, y, x)
 ```
 
+### 5. CV folds
+
+Every model uses the same 5-fold split, saved in `splits/folds.csv` (one row per series: `SeriesInstanceUID`, `fold`). It is stratified by modality and by the rarest aneurysm location of each series. To make it again from `train.csv`:
+
+```bash
+python -m src.utils make-folds
+```
+
+In code, use `src.utils.load_folds()` for the split and `src.utils.competition_score()` for the metric.
+
 ## Progress Log
 
 | Date | Who | What |
 | --- | --- | --- |
 | 2026-10-29 | Both | Selected competition, made project plan |
 | 2026-11-01 | Can | Setup: accepted rules, checked dataset (311 GB, 4,348 series), confirmed late submissions are open, tested DICOM reading on a 24-series subset, added repo skeleton |
+| 2026-11-01 | Taha | Competition metric (`src/utils.py`), tested on random and real labels |
+| 2026-11-02 | Taha | Read the DICOM headers of all 4,348 series on Kaggle (`kaggle/extract_dicom_meta.py`, 51 min, no errors). EDA of labels, modality, age, sex and localizers (`notebooks/01_eda_labels.ipynb`) and of the DICOM metadata (`notebooks/02_eda_dicom_meta.ipynb`). Every series has its own PatientID, so no patient overlap |
+| 2026-11-04 | Taha | 5-fold CV split (`splits/folds.csv`), stratified by modality and rarest location |
 | 2026-11-04 | Can | Preprocessing (`src/data.py`): DICOM loader for single- and multi-frame series, same orientation for all scans, head crop, 1 mm resampling, CT/MR normalization, localizers in volume coordinates. Tested on the 24-series subset. Found that many CT headers have a wrong `RescaleIntercept` (pixels are already in HU) and that the localizer frame `f` starts at 0 |
 
 ## Kaggle Submission History
