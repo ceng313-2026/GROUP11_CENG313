@@ -51,14 +51,25 @@ def load_mips(train, paths):
     coronal = np.zeros((n, 3, 160, 192), np.uint8)
     sagittal = np.zeros((n, 3, 160, 192), np.uint8)
     ok = np.zeros(n, bool)
+    ct_bright = {}
     start = time.time()
     for i, (uid, modality) in enumerate(zip(train[ID_COL], train["Modality"])):
         if uid in paths:
-            axial[i], coronal[i], sagittal[i] = make_mips(load_volume(paths[uid]), is_ct=modality == "CTA")
+            volume = load_volume(paths[uid])
+            if modality == "CTA":
+                ct_bright[uid] = float((volume == 255).mean())
+            axial[i], coronal[i], sagittal[i] = make_mips(volume, is_ct=modality == "CTA")
             ok[i] = True
         if (i + 1) % 500 == 0 or i + 1 == n:
             print(f"MIPs: {i + 1}/{n}, {time.time() - start:.0f} s")
     print(f"{(~ok).sum()} series have no cached volume, they get the training mean as prediction")
+
+    # Check of the CT rescale rule: in a correct CT only bone is >= 700 HU (about 4-7% of the box).
+    # If HU were shifted up by 1024, the whole brain would be white too.
+    if ct_bright:
+        bright = pd.Series(ct_bright)
+        print(f"\nCT check, share of voxels >= 700 HU: {bright.describe().round(3).to_dict()}")
+        print(f"{(bright > 0.2).sum()} CTs above 20% (suspicious): {list(bright[bright > 0.2].index[:5])}")
     return (axial, coronal, sagittal), ok
 
 
