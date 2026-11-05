@@ -67,7 +67,7 @@ All results use the same 5-fold CV and the competition metric. Each fold is scor
 | B0 | 0.500 ± 0.000 | 0.500 | 0.500 | — |
 | B1-LR | 0.659 ± 0.007 | 0.675 | 0.644 | — |
 | B1-LGBM | 0.666 ± 0.010 | 0.676 | 0.655 | — |
-| B2 | | | | |
+| B2 | 0.679 ± 0.012 | 0.704 | 0.654 | — |
 | Ours | | | | |
 
 ## Repository Structure
@@ -210,6 +210,8 @@ Every fold is trained for a fixed 15 epochs and the last model is used. We don't
 | 2026-11-04 | Taha | Baseline B1 on age, sex and modality only: logistic regression with a spline for age (0.659) and LightGBM (0.666). An image model has to clearly beat about 0.66 |
 | 2026-11-04 | Can | Preprocessing (`src/data.py`): DICOM loader for single- and multi-frame series, same orientation for all scans, head crop, 1 mm resampling, CT/MR normalization, localizers in volume coordinates. Tested on the 24-series subset. Found that many CT headers have a wrong `RescaleIntercept` (pixels are already in HU) and that the localizer frame `f` starts at 0 |
 | 2026-11-04 | Can | Data format agreed with Taha. B2 code (`src/train_b2.py`, `MIPNet` in `src/models.py`): ResNet18 on 3-view MIPs with bone removed on CT, left-right flip with swapped labels, flip TTA. Tested end to end on the subset (CPU). Kaggle scripts: code upload, full preprocessing (volumes packed into 8 zips because of Kaggle's output file limit), B2 training. Full preprocessing run started on Kaggle |
+| 2026-11-05 | Can | Full preprocessing on Kaggle: 4,348 series in 240 min, 0 errors, all 2,254 localizers inside the cropped box, rescale skipped for all 1,808 CTs (pixels already in HU). Shared as the Kaggle dataset `group11-volumes`. 36 CTAs have almost no bone above 700 HU: the scanner already removed the skull (bone-subtracted CTA), not a data error |
+| 2026-11-05 | Can | Baseline B2 (`results/oof_b2.csv`, 18 min on a T4): 0.679, Aneurysm Present AUC 0.704. Only slightly above B1 overall, but clearly better inside CTA (0.668 vs 0.590) and MRA (0.647 vs 0.619), so it learns from the vessels. Worse than B1 on MRI T2 (0.570), where MIPs show bright fluid instead of vessels. Train loss keeps falling, validation score flat after about epoch 9: overfitting. A fixed 50/50 rank mean of B1-LGBM and B2 reaches 0.708, so image and patient data are complementary |
 
 ## Kaggle Submission History
 

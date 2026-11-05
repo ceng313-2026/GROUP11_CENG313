@@ -77,7 +77,7 @@ These three things affect both of us. We agree on them in the first week, and no
 - [x] Convert localizer points to volume coordinates
 - [x] Test on the 24-series subset
 - [x] Agree on the data format together (shared contract 1)
-- [ ] Cache all 4,348 series on Kaggle and share them as a Kaggle dataset
+- [x] Cache all 4,348 series on Kaggle and share them as a Kaggle dataset
 
 ### Step 3 — Baselines
 All baselines use the same 5-fold CV and the competition metric.
@@ -92,7 +92,7 @@ All baselines use the same 5-fold CV and the competition metric.
 - [x] Create and save CV folds
 - [x] B0
 - [x] B1
-- [ ] B2 (code done and tested on the subset; training on Kaggle after the full preprocessing run)
+- [x] B2
 
 ### Step 4 — Write-up
 - [ ] `assignment1_eda_baseline.ipynb`: data → findings → baseline results table
