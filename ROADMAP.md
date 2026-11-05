@@ -66,7 +66,7 @@ These three things affect both of us. We agree on them in the first week, and no
 - [x] **Modality:** CTA / MRA / MRI counts, positive rate per modality
 - [x] **Demographics:** age and sex vs. aneurysm presence
 - [x] **DICOM metadata:** number of slices, slice thickness, pixel spacing, image size
-- [ ] **Visuals:** sample slices per modality, localizer points drawn on images
+- [x] **Visuals:** sample slices per modality, localizer points drawn on images
 - [x] **Leakage check:** do some patients have more than one series? (No: every series has its own PatientID)
 
 ### Step 2 — Preprocessing (`src/data.py`)
