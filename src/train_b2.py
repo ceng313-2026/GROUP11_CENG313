@@ -65,11 +65,14 @@ def load_mips(train, paths):
     print(f"{(~ok).sum()} series have no cached volume, they get the training mean as prediction")
 
     # Check of the CT rescale rule: in a correct CT only bone is >= 700 HU (about 4-7% of the box).
-    # If HU were shifted up by 1024, the whole brain would be white too.
+    # If HU were shifted up by 1024, the whole brain would be white too (share far above 20%).
+    # Almost no bone (below 1%) means the crop missed the head or the values are on another scale.
     if ct_bright:
         bright = pd.Series(ct_bright)
         print(f"\nCT check, share of voxels >= 700 HU: {bright.describe().round(3).to_dict()}")
         print(f"{(bright > 0.2).sum()} CTs above 20% (suspicious): {list(bright[bright > 0.2].index[:5])}")
+        low = bright[bright < 0.01].sort_values()
+        print(f"{len(low)} CTs below 1% (suspicious): {low.round(4).to_dict()}")
     return (axial, coronal, sagittal), ok
 
 
