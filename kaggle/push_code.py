@@ -1,5 +1,7 @@
 """Upload our code (src/*.py and splits/folds.csv) to Kaggle as a private dataset.
 
+Owner: Can
+
 The GitHub repo is private, so a Kaggle Notebook cannot git clone it. Instead, the notebooks
 (kaggle/preprocess_notebook.py, kaggle/train_b2_notebook.py) take the code from this dataset.
 

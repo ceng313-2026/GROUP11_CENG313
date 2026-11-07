@@ -1,5 +1,7 @@
 """Read the DICOM headers of every training series and save one row per series.
 
+Owner: Taha
+
 Runs in a Kaggle Notebook with the competition data attached (the full data is 311 GB,
 so we don't run it locally). Paste this file into one cell and run it.
 

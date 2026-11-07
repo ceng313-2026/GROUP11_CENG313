@@ -1,5 +1,7 @@
 """Make the cached volumes of all 4,348 series (src/data.py) in a Kaggle Notebook.
 
+Owner: Can
+
 Setup:
 1. Upload our code first: python kaggle/push_code.py (see that file).
 2. New Notebook -> Add Input: the competition data and the group11-code dataset. Accelerator: None (CPU).

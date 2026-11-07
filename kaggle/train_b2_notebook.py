@@ -1,5 +1,7 @@
 """Train baseline B2 (src/train_b2.py) with the shared 5-fold CV in a Kaggle Notebook.
 
+Owner: Can
+
 Setup:
 1. New Notebook -> Add Input: the competition data (for train.csv), group11-code and group11-volumes.
 2. Accelerator: GPU (T4 or P100). Internet: on (downloads the ImageNet weights of ResNet18).
