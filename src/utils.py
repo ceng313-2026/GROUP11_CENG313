@@ -157,6 +157,24 @@ def cv_report(train, oof):
     return {"summary": summary, "per_fold": per_fold, "per_modality": per_modality, "per_label": per_label}
 
 
+def rank_average(oofs, weights=None):
+    """Combine OOF predictions of several models by averaging their ranks.
+
+    Each model's predictions are turned into ranks (0-1) inside each fold, then averaged with `weights`
+    (equal by default). Ranks put models with differently scaled probabilities on the same footing,
+    and AUC only depends on the order anyway. Returns the same format as run_cv.
+    """
+    weights = np.ones(len(oofs)) if weights is None else np.asarray(weights, dtype=float)
+    base = oofs[0][[ID_COL, "fold"]].copy()
+    aligned = [oof.set_index(ID_COL).loc[base[ID_COL], LABEL_COLS].to_numpy() for oof in oofs]
+    combined = np.zeros_like(aligned[0], dtype=float)
+    for fold in base["fold"].unique():
+        rows = (base["fold"] == fold).to_numpy()
+        for pred, w in zip(aligned, weights):
+            combined[rows] += w * pd.DataFrame(pred[rows]).rank(pct=True).to_numpy()
+    return pd.concat([base, pd.DataFrame(combined / weights.sum(), columns=LABEL_COLS)], axis=1)
+
+
 def save_oof(oof, name, results_dir=RESULTS_DIR):
     """Save OOF predictions to results/oof_<name>.csv, so all models can be compared later."""
     results_dir.mkdir(parents=True, exist_ok=True)
