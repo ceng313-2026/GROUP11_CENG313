@@ -30,13 +30,22 @@ Each sample is a 3D brain scan (a series of slices) from CTA, MRA or MRI. For ea
 | Aneurysm Present | 1,863 positive series (42.8%) |
 | Localizers | 2,254 rows in `train_localizers.csv` |
 
-> TODO: label distribution per location (from EDA).
+| Patients | 4,348: every series has its own DICOM `PatientID` (`train.csv` has no patient ID) |
+| Slices per series | 15 to 1,441 (median: CTA 334, MRA 164, MRI T1post 166, MRI T2 30) |
+| Distance between slices | 0.25 to 10 mm (median: MRA 0.55, CTA 0.62, MRI T1post 1.0, MRI T2 5.0) |
+| File layout | One DICOM file per slice, except 322 series stored as a single multi-frame file |
 
-Notes from a first look at a 24-series subset:
-- Most series have one DICOM file per slice, but some are a single multi-frame file.
-- Slice count ranges from about 24 (MRI T2) to over 800 (CTA). Image size ranges from 256×208 to 1008×1008.
-- Slice thickness ranges from 0.5 mm to 5 mm.
-- `train.csv` has no patient ID, but the DICOM `PatientID` tag does.
+Series with an aneurysm per location (249 positive series have more than one location):
+
+| Location | Series | Location | Series |
+| --- | --- | --- | --- |
+| Anterior Communicating Artery | 363 | Basilar Tip | 110 |
+| Left Supraclinoid Internal Carotid Artery | 330 | Right Posterior Communicating Artery | 101 |
+| Right Middle Cerebral Artery | 294 | Right Infraclinoid Internal Carotid Artery | 98 |
+| Right Supraclinoid Internal Carotid Artery | 278 | Left Posterior Communicating Artery | 86 |
+| Left Middle Cerebral Artery | 219 | Left Infraclinoid Internal Carotid Artery | 78 |
+| Other Posterior Circulation | 113 | Right Anterior Cerebral Artery | 56 |
+| | | Left Anterior Cerebral Artery | 46 |
 
 It is a code competition: submissions run as a Kaggle Notebook. Late submissions are open.
 
@@ -46,13 +55,26 @@ The data is not stored in this repository. Download it from the competition's Da
 
 ### Assignment 1 — EDA + Baselines
 
-> TODO: short summary of EDA findings and preprocessing choices.
+The full write-up is [`notebooks/assignment1_eda_baseline.ipynb`](notebooks/assignment1_eda_baseline.ipynb).
+
+**EDA findings**
+- *Aneurysm Present* is fairly balanced (42.8%), but each location is rare (1–8%), and 13% of the positive series have more than one location.
+- The positive rate depends strongly on modality (CTA 54%, MRA 44%, MRI 25%), sex (women 47%, men 34%) and age (29% under 40, about 46% over 50).
+- The scans differ a lot: number of slices, slice spacing, image size (164 sizes) and length (808 CTAs also include the neck and chest).
+- Header traps: `SliceThickness` is often not the real slice spacing, and many CT headers have a `RescaleIntercept` that must not be applied (pixels are already in HU).
+- All aneurysms are around the circle of Willis in the middle of the head. On MRI T2 and T1post, a maximum intensity projection does not show the vessels.
+- 36 CTAs are bone-subtracted (no skull), and 31 of them are positive: a possible shortcut for a model.
+
+**Preprocessing** (`src/data.py`): every series becomes one uint8 volume of 160 × 192 × 192 voxels of 1 mm, with the same axes for all scans, cut from the top of the head. CT uses a −100 to 700 HU window, MR the 0.5–99.9 percentiles of the head. Localizer points are converted to volume coordinates.
+
+**Evaluation**: the same 5-fold CV (`splits/folds.csv`, stratified by modality and rarest location) and the competition metric for every model, each fold scored on its own and averaged.
 
 | ID | Model | Input |
 | --- | --- | --- |
 | B0 | Training-set mean | — |
-| B1 | Logistic regression / LightGBM | Age, sex, modality |
-| B2 | Pretrained 2D CNN | Maximum intensity projections (3 views) |
+| B1 | Logistic regression (spline for age) / LightGBM, one model per label | Age, sex, modality |
+| B2 | ResNet18 (ImageNet), bone removed on CT | Maximum intensity projections (3 views) |
+| B1 + B2 | Mean of the per-fold ranks of B1-LGBM and B2, no tuning | Both |
 
 ### Assignment 2 — Proposed Solution
 
@@ -68,15 +90,31 @@ All results use the same 5-fold CV and the competition metric. Each fold is scor
 | B1-LR | 0.659 ± 0.007 | 0.675 | 0.644 | — |
 | B1-LGBM | 0.666 ± 0.010 | 0.676 | 0.655 | — |
 | B2 | 0.679 ± 0.012 | 0.704 | 0.654 | — |
+| B1 + B2 | 0.708 ± 0.005 | 0.727 | 0.690 | — |
 | Ours | | | | |
+
+Score inside each modality (same metric, computed on the series of one modality in each fold):
+
+| Model | CTA | MRA | MRI T2 | MRI T1post |
+| --- | --- | --- | --- | --- |
+| B1-LR | 0.583 | 0.602 | 0.596 | 0.595 |
+| B1-LGBM | 0.590 | 0.619 | 0.668 | 0.650 |
+| B2 | 0.668 | 0.647 | 0.570 | 0.624 |
+| B1 + B2 | 0.676 | 0.678 | 0.652 | 0.667 |
+
+B1 gets most of its score from the link between modality and positive rate. Inside CTA and MRA the image model B2 is clearly better than B1, so it learns from the vessels; on MRI T2 and T1post it is worse, because their projections do not show the vessels. Image and patient data are complementary: together they reach 0.708.
 
 ## Repository Structure
 
 ```
 GROUP11_CENG313/
 ├── notebooks/
-│   ├── assignment1_eda_baseline.ipynb
-│   └── assignment2_solution.ipynb
+│   ├── assignment1_eda_baseline.ipynb   # Assignment 1 write-up: EDA summary, baselines, comparison
+│   ├── 01_eda_labels.ipynb              # labels, modality, age, sex, localizers
+│   ├── 02_eda_dicom_meta.ipynb          # DICOM metadata of all series
+│   ├── 03_baselines.ipynb               # B0 and B1
+│   ├── 04_eda_images.ipynb              # cached volumes, MIPs, localizer positions
+│   └── assignment2_solution.ipynb       # (Assignment 2)
 ├── src/
 │   ├── data.py       # DICOM loading, preprocessing, MIPs
 │   ├── models.py     # model definitions
@@ -92,8 +130,6 @@ GROUP11_CENG313/
 ```
 
 ## How to Run
-
-> TODO: training command, how to run each notebook.
 
 ### 1. Environment
 
@@ -197,6 +233,25 @@ It needs a GPU, so it runs on Kaggle: a notebook with the competition data, `gro
 
 Every fold is trained for a fixed 15 epochs and the last model is used. We don't pick the best epoch on the validation fold, because that would make the CV score too optimistic.
 
+### 7. Notebooks
+
+The notebooks are saved with their outputs, so they can be read without running them. To run them again, they need these local files (all under `data/`, not tracked by git):
+
+| File | Used by | How to get it |
+| --- | --- | --- |
+| `data/raw/train.csv`, `data/raw/train_localizers.csv` | all | step 3 |
+| `data/interim/dicom_meta.csv` | `02`, `assignment1` | Run `kaggle/extract_dicom_meta.py` in a Kaggle Notebook with the competition data (set `LIMIT = None`, about 51 min), then `kaggle kernels output <user>/<notebook> -p data/interim` (ours: `tahaeren/group11-dicom-metadata`) |
+| `data/volumes_sample/` | `04`, `assignment1` | A few volumes and the two tables of `group11-volumes`, see below |
+
+```bash
+kaggle datasets download ahmetcan0/group11-volumes -f volumes_meta.csv -p data/volumes_sample
+kaggle datasets download ahmetcan0/group11-volumes -f localizers_vox.csv -p data/volumes_sample
+# one volume: the archive number is the position of the series in the sorted list of all series, modulo 8
+kaggle datasets download ahmetcan0/group11-volumes -f volumes_<i>/volumes/<SeriesInstanceUID>.npz -p data/volumes_sample/volumes
+```
+
+`03_baselines.ipynb` trains B0 and B1 (a few seconds on CPU) and writes `results/oof_b0.csv`, `oof_b1_lr.csv` and `oof_b1_lgbm.csv`. `assignment1_eda_baseline.ipynb` reads all OOF files from `results/`.
+
 ## Progress Log
 
 | Date | Who | What |
@@ -213,6 +268,7 @@ Every fold is trained for a fixed 15 epochs and the last model is used. We don't
 | 2026-11-05 | Can | Full preprocessing on Kaggle: 4,348 series in 240 min, 0 errors, all 2,254 localizers inside the cropped box, rescale skipped for all 1,808 CTs (pixels already in HU). Shared as the Kaggle dataset `group11-volumes`. 36 CTAs have almost no bone above 700 HU: the scanner already removed the skull (bone-subtracted CTA), not a data error |
 | 2026-11-05 | Can | Baseline B2 (`results/oof_b2.csv`, 18 min on a T4): 0.679, Aneurysm Present AUC 0.704. Only slightly above B1 overall, but clearly better inside CTA (0.668 vs 0.590) and MRA (0.647 vs 0.619), so it learns from the vessels. Worse than B1 on MRI T2 (0.570), where MIPs show bright fluid instead of vessels. Train loss keeps falling, validation score flat after about epoch 9: overfitting. A fixed 50/50 rank mean of B1-LGBM and B2 reaches 0.708, so image and patient data are complementary |
 | 2026-11-05 | Taha | EDA of the images (`notebooks/04_eda_images.ipynb`) on 5 sample volumes from `group11-volumes`: slices and MIPs per modality with the localizer point, bone removal on CT, positions of all 2,254 localizers in the box. Left/right labels match the x position, so the reorientation is correct. MRA scans start lower than the top of the head, so aneurysms sit about 45 mm higher in the box than in other modalities. MIPs of MRI T2 and T1post do not show the vessels, which explains the weak B2 scores there. Added an example of the 36 bone-subtracted CTAs: 31 of them are positive (86% vs 54% for all CTAs), a possible shortcut for a model |
+| 2026-11-07 | Taha | Assignment 1 write-up (`notebooks/assignment1_eda_baseline.ipynb`): EDA summary, preprocessing, evaluation, baselines and a comparison table per modality. `src.utils.rank_average` for the B1 + B2 combination (0.708). README: dataset facts, EDA summary, results per modality, how to run the notebooks |
 
 ## Kaggle Submission History
 

@@ -3,7 +3,7 @@
 Project plan for the CENG313 Introduction to Data Science term project, based on the Kaggle competition
 [RSNA Intracranial Aneurysm Detection](https://www.kaggle.com/competitions/rsna-intracranial-aneurysm-detection).
 
-**Team:** Ahmet Can Gümüş (Can) · Taha
+**Team:** Ahmet Can Gümüş (Can) · Muhammed Taha Eren (Taha)
 
 **Goal in one sentence:** In Assignment 1 we understand the data and set a baseline score with simple models. In Assignment 2 we build a stronger model and beat that baseline.
 
@@ -95,8 +95,8 @@ All baselines use the same 5-fold CV and the competition metric.
 - [x] B2
 
 ### Step 4 — Write-up
-- [ ] `assignment1_eda_baseline.ipynb`: data → findings → baseline results table
-- [ ] Update README progress log
+- [x] `assignment1_eda_baseline.ipynb`: data → findings → baseline results table
+- [x] Update README progress log
 
 ---
 
