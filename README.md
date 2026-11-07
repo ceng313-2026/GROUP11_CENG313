@@ -194,7 +194,7 @@ Use `--limit 20` for a test run. Use `--shard 0/2` and `--shard 1/2` to split th
 
 For all 4,348 series we run it on Kaggle (CPU, no accelerator):
 
-1. The GitHub repo is private, so a Kaggle Notebook can't clone it. Upload our code as a private Kaggle dataset instead: `python kaggle/push_code.py --user <kaggle username> --new` the first time, `python kaggle/push_code.py --user <kaggle username> -m "<note>"` after every change.
+1. The Kaggle Notebooks take our code from a private Kaggle dataset, so every run uses a fixed version of the code. Upload it: `python kaggle/push_code.py --user <kaggle username> --new` the first time, `python kaggle/push_code.py --user <kaggle username> -m "<note>"` after every change.
 2. New Notebook with the competition data and `group11-code` as inputs. Paste `kaggle/preprocess_notebook.py` into one cell, test with `LIMIT = 20`, then set `LIMIT = None` and use Save Version → Save & Run All.
 3. Make a dataset (`group11-volumes`) from the notebook's output.
 

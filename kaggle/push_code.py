@@ -2,8 +2,8 @@
 
 Owner: Can
 
-The GitHub repo is private, so a Kaggle Notebook cannot git clone it. Instead, the notebooks
-(kaggle/preprocess_notebook.py, kaggle/train_b2_notebook.py) take the code from this dataset.
+The notebooks (kaggle/preprocess_notebook.py, kaggle/train_b2_notebook.py) take the code from this
+dataset instead of cloning GitHub, so every Kaggle run uses a fixed, known version of the code.
 
 Run from the repo root, with the Kaggle CLI set up (README, step 2):
     python kaggle/push_code.py --user ahmetcan0 --new          # first time: creates <user>/group11-code
