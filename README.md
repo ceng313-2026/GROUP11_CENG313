@@ -75,6 +75,7 @@ The full write-up is [`assignment1_eda_baseline.ipynb`](assignment1_eda_baseline
 | B1 | Logistic regression (spline for age) / LightGBM, one model per label | Age, sex, modality |
 | B2 | ResNet18 (ImageNet), bone removed on CT | Maximum intensity projections (3 views) |
 | B1 + B2 | Mean of the per-fold ranks of B1-LGBM and B2, no tuning | Both |
+| B1-DICOM | LightGBM per label (B1-LGBM settings), our Kaggle submission | Age, sex and DICOM tags that tell the scan types apart, all read from the header (see How to Run, step 8) |
 
 ### Assignment 2 — Proposed Solution
 
@@ -91,6 +92,7 @@ All results use the same 5-fold CV and the competition metric. Each fold is scor
 | B1-LGBM | 0.666 ± 0.010 | 0.676 | 0.655 | — |
 | B2 | 0.679 ± 0.012 | 0.704 | 0.654 | — |
 | B1 + B2 | 0.708 ± 0.005 | 0.727 | 0.690 | — |
+| B1-DICOM | 0.694 ± 0.008 | 0.727 | 0.660 | |
 | Ours | | | | |
 
 Score inside each modality (same metric, computed on the series of one modality in each fold):
@@ -101,6 +103,7 @@ Score inside each modality (same metric, computed on the series of one modality 
 | B1-LGBM | 0.590 | 0.619 | 0.668 | 0.650 |
 | B2 | 0.668 | 0.647 | 0.570 | 0.624 |
 | B1 + B2 | 0.676 | 0.678 | 0.652 | 0.667 |
+| B1-DICOM | 0.661 | 0.646 | 0.657 | 0.623 |
 
 B1 gets most of its score from the link between modality and positive rate. Inside CTA and MRA the image model B2 is clearly better than B1, so it learns from the vessels; on MRI T2 and T1post it is worse, because their projections do not show the vessels. Image and patient data are complementary: together they reach 0.708.
 
@@ -257,6 +260,14 @@ kaggle datasets download ahmetcan0/group11-volumes -f volumes_<i>/volumes/<Serie
 
 `03_baselines.ipynb` trains B0 and B1 (a few seconds on CPU) and writes `results/oof_b0.csv`, `oof_b1_lr.csv` and `oof_b1_lgbm.csv`. `assignment1_eda_baseline.ipynb` reads all OOF files from `results/`.
 
+### 8. Kaggle submission (B1-DICOM)
+
+This is a code competition: Kaggle runs our notebook again on the hidden test series and calls `predict()` once per series. A test series has no row in `train.csv`, so B1 can't be used as it is. **B1-DICOM** reads age, sex and modality from the DICOM header instead (`src.data.header_features`). The `Modality` tag only says CT or MR, so it also uses tags that tell the MR types apart (3D/2D acquisition, TR, TE, flip angle, contrast agent, keywords in the series description). The model is LightGBM per label with the B1-LGBM settings (`src.models.fit_b1_dicom`).
+
+1. Upload the current code: `python kaggle/push_code.py --user <kaggle username> -m "Add B1-DICOM"`.
+2. New Notebook with the competition data and `group11-code` as inputs, accelerator None, **Internet off** (required for submissions). Paste `kaggle/submit_b1_notebook.py` into one cell, then Save Version → Save & Run All. The run prints the 5-fold CV score and writes `oof_b1_dicom.csv` (copy it to `results/`).
+3. Competition page → Submit Prediction → choose the notebook version. The score screenshot goes to `submissions/`.
+
 ## Progress Log
 
 | Date | Who | What |
@@ -275,12 +286,14 @@ kaggle datasets download ahmetcan0/group11-volumes -f volumes_<i>/volumes/<Serie
 | 2026-11-05 | Taha | EDA of the images (`notebooks/04_eda_images.ipynb`) on 5 sample volumes from `group11-volumes`: slices and MIPs per modality with the localizer point, bone removal on CT, positions of all 2,254 localizers in the box. Left/right labels match the x position, so the reorientation is correct. MRA scans start lower than the top of the head, so aneurysms sit about 45 mm higher in the box than in other modalities. MIPs of MRI T2 and T1post do not show the vessels, which explains the weak B2 scores there. Added an example of the 36 bone-subtracted CTAs: 31 of them are positive (86% vs 54% for all CTAs), a possible shortcut for a model |
 | 2026-11-07 | Taha | Assignment 1 write-up (`notebooks/assignment1_eda_baseline.ipynb`): EDA summary, preprocessing, evaluation, baselines and a comparison table per modality. `src.utils.rank_average` for the B1 + B2 combination (0.708). README: dataset facts, EDA summary, results per modality, how to run the notebooks |
 | 2026-11-11 | Can | Repo layout changed to the course format: `assignment1_eda_baseline.ipynb` moved to the root, `assignment2_solution.ipynb` skeleton and `submissions/` added, detailed notebooks stay in `notebooks/` |
+| 2026-11-11 | Can | B1-DICOM for the Kaggle late submission: B1 with inputs read from the DICOM header (`src.data.header_features`, `src.models.fit_b1_dicom`, `kaggle/submit_b1_notebook.py`), because test series have no `train.csv` row. Headers of all 4,348 series in 43 s. CV 0.694 ± 0.008, above B1-LGBM (0.666), mostly inside CTA (0.661 vs 0.590): header tags identify hospital and protocol. Submitted as a late submission |
+| 2026-11-11 | Can | Assignment 1 notebook ordered by the 7 graded sections: data overview with types, `describe()`, missing values and duplicates (found 3 duplicate rows in `train_localizers.csv`), missing values in the DICOM headers, preprocessing of the tabular inputs, B1-DICOM in the results, Kaggle submission section |
 
 ## Kaggle Submission History
 
-| Date | Model | Public LB | Notes |
-| --- | --- | --- | --- |
-| | | | |
+| Date | Model | Public score | Private score | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-11-11 | B1-DICOM | pending | pending | Late submission, notebook `group11-b1-dicom-submission` version 1, CV 0.694 |
 
 ## References
 

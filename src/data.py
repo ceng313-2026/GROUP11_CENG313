@@ -23,11 +23,13 @@ and pack_volumes() puts them into a few zip files in /kaggle/working. volume_pat
 again, packed or not.
 
 make_mips() turns a cached volume into the three 2D views used by baseline B2.
+header_features() reads the model inputs of B1-DICOM (our Kaggle submission) from the DICOM header.
 """
 import argparse
 import ast
 import itertools
 import os
+import re
 import shutil
 import time
 import zipfile
@@ -360,6 +362,87 @@ def make_mips(volume, is_ct):
             np.round(volume.mean(axis=axis, dtype=np.float32)).astype(np.uint8),
         ]))
     return tuple(views)
+
+
+# Model inputs of B1-DICOM, all read from the header of one file per series (src.models.fit_b1_dicom).
+# At submission time there is no train.csv: age, sex and modality must come from the DICOM tags, and
+# the Modality tag only says CT or MR. The other tags tell the MR types apart: MRA is 3D gradient echo
+# with short TR/TE, MRI T2 is 2D with long TR/TE and few slices, MRI T1post usually has a contrast agent.
+HEADER_FEATURES = [
+    "is_ct", "age", "male", "n_slices", "slice_thickness", "pixel_spacing", "rows", "field_strength",
+    "mr_3d", "repetition_time", "echo_time", "flip_angle", "contrast",
+    "desc_angio", "desc_t1", "desc_t2", "desc_post",
+]
+
+# Keywords in SeriesDescription / ProtocolName (upper case)
+_DESCRIPTION_FLAGS = {
+    "desc_angio": r"TOF|MRA|ANGIO|COW|CTA",
+    "desc_t1": r"T1|BRAVO|MPRAGE|MPR|SPGR",
+    "desc_t2": r"T2|FLAIR|PROPELLER",
+    "desc_post": r"POST|\+C|C\+|GD|GAD|CONTRAST",
+}
+
+
+def _first_float(value):
+    """A DICOM number as float; the first one for multi-valued tags, NaN if missing or not a number."""
+    if isinstance(value, pydicom.multival.MultiValue):
+        value = value[0] if len(value) else None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return np.nan
+
+
+def _age_years(value):
+    """PatientAge such as '045Y' -> 45.0. Missing, empty or not in years -> NaN."""
+    match = re.fullmatch(r"0*(\d{1,3})Y", str(value or "").strip().upper())
+    age = float(match.group(1)) if match else np.nan
+    return age if 0 < age < 120 else np.nan
+
+
+def header_features(series_dir):
+    """One row of B1-DICOM inputs (HEADER_FEATURES) for a series folder, from its first file only.
+
+    Missing tags become NaN; LightGBM handles them. Returns a dict with SeriesInstanceUID (the folder name).
+    """
+    series_dir = Path(series_dir)
+    files = sorted(series_dir.glob("*.dcm"))
+    row = {ID_COL: series_dir.name, **{name: np.nan for name in HEADER_FEATURES}}
+    if not files:
+        return row
+    ds = pydicom.dcmread(files[0], stop_before_pixels=True)
+
+    frames = _first_float(ds.get("NumberOfFrames"))
+    frames = int(frames) if frames >= 1 else 1  # NaN (no tag) compares False
+    sex = str(ds.get("PatientSex") or "").strip().upper()
+    contrast = str(ds.get("ContrastBolusAgent") or "").strip().upper()
+    acquisition = str(ds.get("MRAcquisitionType") or "").strip().upper()
+    description = f"{ds.get('SeriesDescription') or ''} {ds.get('ProtocolName') or ''}".upper()
+
+    row.update({
+        "is_ct": float(str(ds.get("Modality", "")).upper() == "CT"),
+        "age": _age_years(ds.get("PatientAge")),
+        "male": {"M": 1.0, "F": 0.0}.get(sex, np.nan),
+        "n_slices": float(frames * len(files)),
+        "slice_thickness": _first_float(ds.get("SliceThickness")),
+        "pixel_spacing": _first_float(ds.get("PixelSpacing")),
+        "rows": _first_float(ds.get("Rows")),
+        "field_strength": _first_float(ds.get("MagneticFieldStrength")),
+        "mr_3d": {"3D": 1.0, "2D": 0.0}.get(acquisition, np.nan),
+        "repetition_time": _first_float(ds.get("RepetitionTime")),
+        "echo_time": _first_float(ds.get("EchoTime")),
+        "flip_angle": _first_float(ds.get("FlipAngle")),
+        "contrast": float(contrast not in ("", "NONE", "NO")),
+        **{name: float(bool(re.search(pattern, description))) for name, pattern in _DESCRIPTION_FLAGS.items()},
+    })
+    return row
+
+
+def header_table(series_dirs, workers=None):
+    """header_features() of many series in parallel, as a DataFrame (one row per series)."""
+    with ProcessPoolExecutor(max_workers=workers or os.cpu_count()) as pool:
+        rows = list(pool.map(header_features, series_dirs, chunksize=8))
+    return pd.DataFrame(rows)
 
 
 def _process(args):
