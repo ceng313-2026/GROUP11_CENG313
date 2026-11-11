@@ -97,6 +97,9 @@ All baselines use the same 5-fold CV and the competition metric.
 ### Step 4 — Write-up
 - [x] `assignment1_eda_baseline.ipynb`: data → findings → baseline results table
 - [x] Update README progress log
+- [x] Move to the course repo layout (assignment notebooks in the root, `submissions/`)
+- [ ] Kaggle late submission, screenshot in `submissions/`, score in README
+- [ ] Restart & Run All, then tag `assignment1` on `main` (due 13 Nov, 23:59)
 
 ---
 

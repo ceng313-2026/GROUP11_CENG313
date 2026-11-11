@@ -55,7 +55,7 @@ The data is not stored in this repository. Download it from the competition's Da
 
 ### Assignment 1 — EDA + Baselines
 
-The full write-up is [`notebooks/assignment1_eda_baseline.ipynb`](notebooks/assignment1_eda_baseline.ipynb).
+The full write-up is [`assignment1_eda_baseline.ipynb`](assignment1_eda_baseline.ipynb).
 
 **EDA findings**
 - *Aneurysm Present* is fairly balanced (42.8%), but each location is rare (1–8%), and 13% of the positive series have more than one location.
@@ -108,26 +108,31 @@ B1 gets most of its score from the link between modality and positive rate. Insi
 
 ```
 GROUP11_CENG313/
-├── notebooks/
-│   ├── assignment1_eda_baseline.ipynb   # Assignment 1 write-up: EDA summary, baselines, comparison
-│   ├── 01_eda_labels.ipynb              # labels, modality, age, sex, localizers
-│   ├── 02_eda_dicom_meta.ipynb          # DICOM metadata of all series
-│   ├── 03_baselines.ipynb               # B0 and B1
-│   ├── 04_eda_images.ipynb              # cached volumes, MIPs, localizer positions
-│   └── assignment2_solution.ipynb       # (Assignment 2)
-├── src/
-│   ├── data.py       # DICOM loading, preprocessing, MIPs
-│   ├── models.py     # model definitions
-│   ├── train_b2.py   # baseline B2 training with 5-fold CV
-│   └── utils.py      # competition metric, CV split, helpers
-├── kaggle/           # scripts that run on Kaggle (one notebook cell each) and the code upload
-├── splits/           # folds.csv, the shared CV split
-├── results/          # out-of-fold predictions of every model
-├── data/             # not tracked by git
+├── README.md
 ├── requirements.txt
-├── ROADMAP.md
-└── README.md
+├── .gitignore                         # excludes data/
+├── assignment1_eda_baseline.ipynb     # Assignment 1 write-up: EDA summary, baselines, comparison
+├── assignment2_solution.ipynb         # Assignment 2 (in progress)
+├── src/
+│   ├── __init__.py
+│   ├── data.py                        # DICOM loading, preprocessing, MIPs
+│   ├── models.py                      # model definitions
+│   ├── train_b2.py                    # baseline B2 training with 5-fold CV
+│   └── utils.py                       # competition metric, CV split, helpers
+├── notebooks/                         # detailed analyses that the assignment notebooks summarize
+│   ├── 01_eda_labels.ipynb            # labels, modality, age, sex, localizers
+│   ├── 02_eda_dicom_meta.ipynb        # DICOM metadata of all series
+│   ├── 03_baselines.ipynb             # B0 and B1
+│   └── 04_eda_images.ipynb            # cached volumes, MIPs, localizer positions
+├── kaggle/                            # scripts that run on Kaggle (one notebook cell each) and the code upload
+├── splits/                            # folds.csv, the shared CV split
+├── results/                           # out-of-fold predictions of every model
+├── submissions/                       # Kaggle submission score screenshots
+├── data/                              # not tracked by git
+└── ROADMAP.md
 ```
+
+Open the notebooks from the repository root (or from `notebooks/` for the detailed ones); both work, because each notebook finds the root itself.
 
 ## How to Run
 
@@ -269,6 +274,7 @@ kaggle datasets download ahmetcan0/group11-volumes -f volumes_<i>/volumes/<Serie
 | 2026-11-05 | Can | Baseline B2 (`results/oof_b2.csv`, 18 min on a T4): 0.679, Aneurysm Present AUC 0.704. Only slightly above B1 overall, but clearly better inside CTA (0.668 vs 0.590) and MRA (0.647 vs 0.619), so it learns from the vessels. Worse than B1 on MRI T2 (0.570), where MIPs show bright fluid instead of vessels. Train loss keeps falling, validation score flat after about epoch 9: overfitting. A fixed 50/50 rank mean of B1-LGBM and B2 reaches 0.708, so image and patient data are complementary |
 | 2026-11-05 | Taha | EDA of the images (`notebooks/04_eda_images.ipynb`) on 5 sample volumes from `group11-volumes`: slices and MIPs per modality with the localizer point, bone removal on CT, positions of all 2,254 localizers in the box. Left/right labels match the x position, so the reorientation is correct. MRA scans start lower than the top of the head, so aneurysms sit about 45 mm higher in the box than in other modalities. MIPs of MRI T2 and T1post do not show the vessels, which explains the weak B2 scores there. Added an example of the 36 bone-subtracted CTAs: 31 of them are positive (86% vs 54% for all CTAs), a possible shortcut for a model |
 | 2026-11-07 | Taha | Assignment 1 write-up (`notebooks/assignment1_eda_baseline.ipynb`): EDA summary, preprocessing, evaluation, baselines and a comparison table per modality. `src.utils.rank_average` for the B1 + B2 combination (0.708). README: dataset facts, EDA summary, results per modality, how to run the notebooks |
+| 2026-11-11 | Can | Repo layout changed to the course format: `assignment1_eda_baseline.ipynb` moved to the root, `assignment2_solution.ipynb` skeleton and `submissions/` added, detailed notebooks stay in `notebooks/` |
 
 ## Kaggle Submission History
 
