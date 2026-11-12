@@ -293,7 +293,8 @@ This is a code competition: Kaggle runs our notebook again on the hidden test se
 
 | Date | Model | Public score | Private score | Notes |
 | --- | --- | --- | --- | --- |
-| 2026-11-11 | B1-DICOM | pending | pending | Late submission, notebook `group11-b1-dicom-submission` version 1, CV 0.694 |
+| 2026-11-11 | B1-DICOM | – | – | Late submission, notebook `group11-b1-dicom-submission` version 1, CV 0.694. Failed: the scoring run went over the 12-hour limit |
+| 2026-11-12 | B1-DICOM | pending | pending | Version 2: training header features from the code dataset, one LightGBM thread, removes only the current series from `/kaggle/shared` |
 
 ## References
 

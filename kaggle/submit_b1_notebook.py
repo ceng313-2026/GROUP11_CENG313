@@ -9,6 +9,8 @@ from train.csv) cannot be used as it is. B1-DICOM reads the same information fro
 
 Setup:
 1. Upload the current code: python kaggle/push_code.py --user <kaggle username> -m "Add B1-DICOM"
+   If data/interim/train_header_features.csv exists (output of an earlier run), it is uploaded too and
+   the scoring run uses it instead of reading the 4,348 training series again.
 2. New Notebook -> Add Input: the competition data and the group11-code dataset.
    Accelerator: None (CPU). Internet: OFF (required for submissions).
 3. Paste this file into one cell and use Save Version -> Save & Run All.
@@ -67,6 +69,8 @@ def setup_code():
         shutil.copy(f, f"{CODE}/src/")
     if os.path.exists(f"{folder}/folds.csv"):
         shutil.copy(f"{folder}/folds.csv", f"{CODE}/splits/")
+    if os.path.exists(f"{folder}/train_header_features.csv"):
+        shutil.copy(f"{folder}/train_header_features.csv", CODE)
     sys.path.insert(0, CODE)
     print(f"Code from {folder}")
 
@@ -80,8 +84,14 @@ ROOT = find_competition()
 train = pd.read_csv(f"{ROOT}/train.csv")
 
 # 1. Header features of every training series (first file of each series only)
+# The scoring run takes them from the code dataset: it does less work before the server starts and
+# no worker processes are started in the run that Kaggle scores.
+CACHED = f"{CODE}/train_header_features.csv"
 start = time.time()
-features = header_table([f"{ROOT}/series/{uid}" for uid in train[ID_COL]])
+if IS_RERUN and os.path.exists(CACHED):
+    features = pd.read_csv(CACHED)
+else:
+    features = header_table([f"{ROOT}/series/{uid}" for uid in train[ID_COL]])
 print(f"Header features of {len(features)} series in {time.time() - start:.0f} s")
 print("Missing values per feature:", features[HEADER_FEATURES].isna().mean().round(2).to_dict())
 data = train.merge(features, on=ID_COL, how="left", validate="one_to_one")
@@ -103,6 +113,8 @@ if not IS_RERUN:
 
 # 3. Final model on all training series
 MODELS = fit_b1_dicom(data[HEADER_FEATURES], data)
+for model in MODELS.values():
+    model.set_params(n_jobs=1)  # predict() gets one row at a time, so one thread is enough
 FALLBACK = data[LABEL_COLS].mean()  # used only if a test series cannot be read
 
 
@@ -114,8 +126,9 @@ def predict(series_path):
     except Exception:  # one unreadable series should not fail the whole submission
         traceback.print_exc()
         probs = FALLBACK
-    # The gateway copies each test series to /kaggle/shared; it has to be removed after the prediction
-    shutil.rmtree("/kaggle/shared", ignore_errors=True)
+    # The gateway puts each test series under /kaggle/shared; remove it after the prediction.
+    # Only this series: removing all of /kaggle/shared goes through every earlier series again.
+    shutil.rmtree(series_path, ignore_errors=True)
     return pd.DataFrame({col: [float(probs[col])] for col in LABEL_COLS})
 
 

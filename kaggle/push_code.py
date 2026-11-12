@@ -10,6 +10,7 @@ Run from the repo root, with the Kaggle CLI set up (README, step 2):
     python kaggle/push_code.py --user ahmetcan0 -m "Add B2"    # later: uploads a new version
 
 The files are uploaded flat (no folders); the notebooks put them back into src/ and splits/.
+data/interim/train_header_features.csv is uploaded too if it exists (B1-DICOM submission).
 To let the other team member use it: Kaggle -> the dataset page -> Settings -> Sharing.
 """
 import argparse
@@ -34,6 +35,9 @@ def main():
         shutil.rmtree(BUILD)
     BUILD.mkdir(parents=True)
     files = sorted((REPO / "src").glob("*.py")) + [REPO / "splits" / "folds.csv"]
+    header_features = REPO / "data" / "interim" / "train_header_features.csv"
+    if header_features.exists():  # used by kaggle/submit_b1_notebook.py in the scoring run
+        files.append(header_features)
     for f in files:
         shutil.copy(f, BUILD / f.name)
     metadata = {"title": SLUG, "id": f"{args.user}/{SLUG}", "licenses": [{"name": "CC0-1.0"}]}
