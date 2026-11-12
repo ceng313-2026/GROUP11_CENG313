@@ -92,7 +92,7 @@ All results use the same 5-fold CV and the competition metric. Each fold is scor
 | B1-LGBM | 0.666 ± 0.010 | 0.676 | 0.655 | — |
 | B2 | 0.679 ± 0.012 | 0.704 | 0.654 | — |
 | B1 + B2 | 0.708 ± 0.005 | 0.727 | 0.690 | — |
-| B1-DICOM | 0.694 ± 0.008 | 0.727 | 0.660 | |
+| B1-DICOM | 0.694 ± 0.008 | 0.727 | 0.660 | 0.610 public / 0.585 private |
 | Ours | | | | |
 
 Score inside each modality (same metric, computed on the series of one modality in each fold):
@@ -288,13 +288,14 @@ This is a code competition: Kaggle runs our notebook again on the hidden test se
 | 2026-11-11 | Can | Repo layout changed to the course format: `assignment1_eda_baseline.ipynb` moved to the root, `assignment2_solution.ipynb` skeleton and `submissions/` added, detailed notebooks stay in `notebooks/` |
 | 2026-11-11 | Can | B1-DICOM for the Kaggle late submission: B1 with inputs read from the DICOM header (`src.data.header_features`, `src.models.fit_b1_dicom`, `kaggle/submit_b1_notebook.py`), because test series have no `train.csv` row. Headers of all 4,348 series in 43 s. CV 0.694 ± 0.008, above B1-LGBM (0.666), mostly inside CTA (0.661 vs 0.590): header tags identify hospital and protocol. Submitted as a late submission |
 | 2026-11-11 | Can | Assignment 1 notebook ordered by the 7 graded sections: data overview with types, `describe()`, missing values and duplicates (found 3 duplicate rows in `train_localizers.csv`), missing values in the DICOM headers, preprocessing of the tabular inputs, B1-DICOM in the results, Kaggle submission section |
+| 2026-11-12 | Can | First B1-DICOM submission went over the 12-hour limit in the scoring run. Version 2 (cached training header features, one LightGBM thread, removes only the current series) scored 0.610 public, 0.585 private, well below CV 0.694. Most likely the header tags that identify hospital and protocol transfer less well to the hidden test set |
 
 ## Kaggle Submission History
 
 | Date | Model | Public score | Private score | Notes |
 | --- | --- | --- | --- | --- |
 | 2026-11-11 | B1-DICOM | – | – | Late submission, notebook `group11-b1-dicom-submission` version 1, CV 0.694. Failed: the scoring run went over the 12-hour limit |
-| 2026-11-12 | B1-DICOM | pending | pending | Version 2: training header features from the code dataset, one LightGBM thread, removes only the current series from `/kaggle/shared` |
+| 2026-11-12 | B1-DICOM | 0.60959 | 0.58457 | Version 2, scored ([screenshot](submissions/b1_dicom_late_submission.png)): training header features from the code dataset, one LightGBM thread, removes only the current series from `/kaggle/shared` |
 
 ## References
 
